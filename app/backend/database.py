@@ -1,10 +1,11 @@
 import sqlite3
 from pathlib import Path
 
-DB_PATH = Path(__file__).parent.parent.parent / "data" / "workouts.db"
+from .config import DB_PATH
 
 
 def get_conn() -> sqlite3.Connection:
+    """Establish sqlite3 connection. """
     DB_PATH.parent.mkdir(exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
@@ -12,9 +13,18 @@ def get_conn() -> sqlite3.Connection:
 
 
 def init_db():
+    """
+    Create tables in db for workout_entries_raw and workout_entries_parsed. 
+
+    Notes: 
+    ------
+    1. Table workout_entries_raw contains raw user-input entries and other metadata such as entry date, time etc.
+    2. Table workout_entries_parsed contains parsed outputs of raw entries into desired categories such as workout name, 
+    number of sets, reps, weight etc.
+    """
     with get_conn() as conn:
         conn.executescript("""
-            CREATE TABLE IF NOT EXISTS workout_entries (
+            CREATE TABLE IF NOT EXISTS workout_entries_raw (
                 id            INTEGER PRIMARY KEY AUTOINCREMENT,
                 raw_text      TEXT NOT NULL,
                 workout_date  DATE NOT NULL,
@@ -22,9 +32,9 @@ def init_db():
                 parse_status  TEXT DEFAULT 'ok'
             );
 
-            CREATE TABLE IF NOT EXISTS exercises (
+            CREATE TABLE IF NOT EXISTS workout_entries_parsed (
                 id            INTEGER PRIMARY KEY AUTOINCREMENT,
-                entry_id      INTEGER NOT NULL REFERENCES workout_entries(id),
+                entry_id      INTEGER NOT NULL REFERENCES workout_entries_raw(id),
                 exercise_name TEXT NOT NULL,
                 sets          INTEGER,
                 reps          INTEGER,
