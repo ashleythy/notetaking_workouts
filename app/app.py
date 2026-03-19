@@ -3,7 +3,7 @@ import sys
 
 import streamlit as st
 
-# Make sure backend imports work regardless of working directory
+# Inserts current working directory of main.py at the beginning of the search path for module imports
 sys.path.insert(0, os.path.dirname(__file__))
 
 from backend.database import init_db
