@@ -9,9 +9,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from backend import database
 
+
+# Page intro
 st.title("View Logs")
 
-# --- Filters ---
+# Filters
 col1, col2 = st.columns(2)
 with col1:
     start_date = st.date_input("From", value=date.today() - timedelta(days=30))
@@ -27,7 +29,7 @@ with col3:
 with col4:
     selected_feelings = st.multiselect("Feeling", options=all_feelings, placeholder="All feelings")
 
-# --- Data ---
+# Data
 rows = database.get_exercises(
     start_date=start_date.strftime("%Y-%m-%d"),
     end_date=end_date.strftime("%Y-%m-%d"),
@@ -48,8 +50,8 @@ df = df.rename(columns={
     "reps": "Reps",
     "duration_min": "Duration (min)",
     "weight_kg": "Weight (kg)",
-    "feeling": "Feeling",
-    "notes": "Notes",
+    "feelings": "Feelings",
+    "others": "Notes",
 })
 
 st.dataframe(df, use_container_width=True, hide_index=True)

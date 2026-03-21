@@ -1,3 +1,4 @@
+from typing import Optional
 import sqlite3
 from pathlib import Path
 from dataclasses import fields
@@ -109,9 +110,10 @@ def save_entry(raw_text: str, workout_date: str, exercises: list[dict], parse_st
 
 def save_failed_entry(raw_text: str, workout_date: str) -> None:
     """
-    Saves a failed workout entry to the database, by inserting:
-    - A single record into `workout_entries_raw` with `parse_status` set to `"failed"`
-    - It is used when parsing of an entry was unsuccessful, allowing the raw input to be
+    Saves a failed workout entry to the database, by inserting a single record 
+    into `workout_entries_raw` with `parse_status` set to `"failed"`.
+
+    It is used when parsing of an entry was unsuccessful, allowing the raw input to be
     stored for debugging or reprocessing later.
 
     Args:
@@ -141,12 +143,20 @@ def save_failed_entry(raw_text: str, workout_date: str) -> None:
         raise
 
 
+# Below are functions to get respective data from the database
 def get_exercises(
-    start_date: str | None = None,
-    end_date: str | None = None,
-    exercise_names: list[str] | None = None,
-    feelings: list[str] | None = None,
+    start_date: Optional[str],
+    end_date: Optional[str],
+    exercise_names: Optional[list[str]],
+    feelings: Optional[list[str]]
 ) -> list[dict]:
+    """
+    Retrieves parsed entries from the database with optional filters. 
+    Filters include date range, exercise names, feelings, and thoughts. 
+
+    Returns:
+        list[dict]: List of exercise records.
+    """
     conditions = []
     params = []
 
@@ -162,17 +172,27 @@ def get_exercises(
         params.extend(exercise_names)
     if feelings:
         placeholders = ",".join("?" * len(feelings))
-        conditions.append(f"x.feeling IN ({placeholders})")
+        conditions.append(f"x.feelings IN ({placeholders})")
         params.extend(feelings)
 
     where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
     query = f"""
-        SELECT e.workout_date, x.exercise_name, x.sets, x.reps,
-               x.duration_min, x.weight_kg, x.feeling, x.notes, e.id as entry_id
-        FROM workout_entries e
-        JOIN exercises x ON x.entry_id = e.id
+        SELECT 
+            e.entry_id,
+            e.workout_date, 
+            x.exercise_name, 
+            x.sets, 
+            x.reps,
+            x.duration_min,
+            x.weight_kg, 
+            x.feelings,
+            x.thoughts, 
+            x.others
+        FROM workout_entries_raw e
+        JOIN workout_entries_parsed x 
+        ON x.entry_id = e.entry_id
         {where}
-        ORDER BY e.workout_date DESC, e.id DESC
+        ORDER BY e.workout_date DESC, e.entry_id DESC
     """
     with get_conn() as conn:
         rows = conn.execute(query, params).fetchall()
@@ -182,7 +202,7 @@ def get_exercises(
 def get_all_exercise_names() -> list[str]:
     with get_conn() as conn:
         rows = conn.execute(
-            "SELECT DISTINCT exercise_name FROM exercises ORDER BY exercise_name"
+            "SELECT DISTINCT exercise_name FROM workout_entries_parsed ORDER BY exercise_name"
         ).fetchall()
     return [r["exercise_name"] for r in rows]
 
@@ -190,6 +210,6 @@ def get_all_exercise_names() -> list[str]:
 def get_all_feelings() -> list[str]:
     with get_conn() as conn:
         rows = conn.execute(
-            "SELECT DISTINCT feeling FROM exercises WHERE feeling IS NOT NULL ORDER BY feeling"
+            "SELECT DISTINCT feelings FROM workout_entries_parsed WHERE feelings IS NOT NULL ORDER BY feelings"
         ).fetchall()
-    return [r["feeling"] for r in rows]
+    return [r["feelings"] for r in rows]

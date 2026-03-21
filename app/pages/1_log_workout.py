@@ -21,7 +21,7 @@ st.write("Type your workout in any format")
 with st.form("workout_form"):
     raw_text = st.text_area("What did you do?", height=150, placeholder="e.g. bench press 3x10 at 60kg, felt strong. felt intimidated as the gym was crowded, sad")
     date_override = st.date_input("Workout date", value=date.today())
-    submitted = st.form_submit_button("Submit & Parse")
+    submitted = st.form_submit_button("Submit")
 
 # If something was submitted in the form
 if submitted and raw_text.strip():
@@ -111,7 +111,7 @@ if "exercise_df" in st.session_state:
             st.rerun()
 
     with col2:
-        if st.button("Confirm & Save", type="primary"):
+        if st.button("Confirm", type="primary"):
             exercises_to_save = edited_df.drop(columns=["select"]).to_dict(orient="records")
             # Remove rows with no exercise name
             exercises_to_save = [e for e in exercises_to_save if e.get("exercise_name")]
@@ -120,9 +120,10 @@ if "exercise_df" in st.session_state:
                 st.error("No exercises to save. Make sure at least one row has an extracted exercise")
             else:
                 database.save_entry(st.session_state["raw_text"], st.session_state["workout_date"], exercises_to_save)
-                st.success(f"Saved {len(exercises_to_save)} exercise(s) for {st.session_state['workout_date']}!")
-                st.balloons()
+                workout_date_saved = st.session_state["workout_date"]
                 del st.session_state["exercise_df"]
+                st.success("Exercises saved!")
+                st.balloons()
 
     with col3:
         if st.button("Delete table (restart)"):
