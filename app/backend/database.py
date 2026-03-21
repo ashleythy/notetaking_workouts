@@ -1,7 +1,10 @@
 import sqlite3
 from pathlib import Path
+from dataclasses import fields
+from loguru import logger
 
 from .config import DB_PATH
+from .models import WorkoutEntryRaw, WorkoutEntryParsed
 
 
 def get_conn() -> sqlite3.Connection:
@@ -16,71 +19,126 @@ def init_db():
     """
     Create tables in db for workout_entries_raw and workout_entries_parsed. 
 
+    Raise:
+        Exception: If any database operation fails.
+
     Notes: 
-    ------
     1. Table workout_entries_raw contains raw user-input entries and other metadata such as entry date, time etc.
-    2. Table workout_entries_parsed contains parsed outputs of raw entries into desired categories such as workout name, 
-    number of sets, reps, weight etc.
+    2. Table workout_entries_parsed contains the parsed entries.
     """
-    with get_conn() as conn:
-        conn.executescript("""
-            CREATE TABLE IF NOT EXISTS workout_entries_raw (
-                id            INTEGER PRIMARY KEY AUTOINCREMENT,
-                raw_text      TEXT NOT NULL,
-                workout_date  DATE NOT NULL,
-                created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
-                parse_status  TEXT DEFAULT 'ok'
-            );
+    try:
+        with get_conn() as conn:
+            conn.executescript("""
+                CREATE TABLE IF NOT EXISTS workout_entries_raw (
+                    entry_id      INTEGER PRIMARY KEY AUTOINCREMENT,
+                    raw_text      TEXT NOT NULL,
+                    workout_date  DATE NOT NULL,
+                    created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    parse_status  TEXT DEFAULT 'ok'
+                );
 
-            CREATE TABLE IF NOT EXISTS workout_entries_parsed (
-                id            INTEGER PRIMARY KEY AUTOINCREMENT,
-                entry_id      INTEGER NOT NULL REFERENCES workout_entries_raw(id),
-                exercise_name TEXT NOT NULL,
-                sets          INTEGER,
-                reps          INTEGER,
-                duration_min  REAL,
-                weight_kg     REAL,
-                feeling       TEXT,
-                notes         TEXT
-            );
-        """)
-
-
-def save_entry(raw_text: str, workout_date: str, exercises: list[dict], parse_status: str = "ok") -> int:
-    with get_conn() as conn:
-        cur = conn.execute(
-            "INSERT INTO workout_entries (raw_text, workout_date, parse_status) VALUES (?, ?, ?)",
-            (raw_text, workout_date, parse_status),
-        )
-        entry_id = cur.lastrowid
-        conn.executemany(
-            """INSERT INTO exercises
-               (entry_id, exercise_name, sets, reps, duration_min, weight_kg, feeling, notes)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-            [
-                (
-                    entry_id,
-                    e.get("exercise_name"),
-                    e.get("sets"),
-                    e.get("reps"),
-                    e.get("duration_min"),
-                    e.get("weight_kg"),
-                    e.get("feeling"),
-                    e.get("notes"),
-                )
-                for e in exercises
-            ],
-        )
-    return entry_id
+                CREATE TABLE IF NOT EXISTS workout_entries_parsed (
+                    entry_id      INTEGER NOT NULL REFERENCES workout_entries_raw(entry_id),
+                    exercise_name TEXT NOT NULL,
+                    sets          INTEGER,
+                    reps          INTEGER,
+                    duration_min  REAL,
+                    weight_kg     REAL,
+                    feelings      TEXT,
+                    thoughts      TEXT,
+                    others        TEXT
+                );
+            """)
+    except Exception as e: 
+        logger.error(f"Failed to initialise db: {e}")
+        raise
 
 
-def save_failed_entry(raw_text: str, workout_date: str) -> int:
-    with get_conn() as conn:
-        cur = conn.execute(
-            "INSERT INTO workout_entries (raw_text, workout_date, parse_status) VALUES (?, ?, 'failed')",
-            (raw_text, workout_date),
-        )
-    return cur.lastrowid
+def save_entry(raw_text: str, workout_date: str, exercises: list[dict], parse_status: str = "ok") -> None:
+    """
+    Saves a workout entry to the database, by inserting:
+    - A single raw entry into `workout_entries_raw`
+    - One or more parsed exercise entries into `workout_entries_parsed`
+
+    The parsed entries are linked to the raw entry via `entry_id`.
+
+    The columns inserted into each table are dynamically derived from
+    the corresponding dataclasses (`WorkoutEntryRaw`, `WorkoutEntryParsed`).
+
+    Args:
+        raw_text (str): Original, unstructured user input
+        workout_date (str): Date of the workout (for e.g. "2025-12-12")
+        exercises (list[dict]): List of parsed exercise dictionaries
+            Each dict should match fields in `WorkoutEntryParsed`
+        parse_status (str, optional): Status of parsing (default: "ok")
+
+    Raises:
+        Exception: If any database insert fails
+    """
+    logger.info("Saving entry")
+
+    # Get variables defined in dataclasses
+    # WorkoutEntryRaw
+    raw_vars = [i.name for i in fields(WorkoutEntryRaw)]
+    raw_vars_for_sql = ", ".join(raw_vars)
+    raw_sql_placeholders = ", ".join(["?"]*len(raw_vars))
+
+    # WorkoutEntryParsed
+    parsed_vars = [i.name for i in fields(WorkoutEntryParsed)]
+    parsed_vars_for_sql = ", ".join(["entry_id"] + parsed_vars)
+    parsed_sql_placeholders = ", ".join(["?"]*(len(parsed_vars)+1))
+
+    try:
+        with get_conn() as conn:
+            cur = conn.execute(
+                f"INSERT INTO workout_entries_raw ({raw_vars_for_sql}) VALUES ({raw_sql_placeholders})",
+                (raw_text, workout_date, parse_status)
+            )
+            entry_id = cur.lastrowid
+
+            conn.executemany(
+                f"INSERT INTO workout_entries_parsed ({parsed_vars_for_sql}) VALUES ({parsed_sql_placeholders})", 
+                [(entry_id, *[e.get(var) for var in parsed_vars]) for e in exercises]
+            )
+        logger.debug(f"Successfully saved entry (id: {entry_id})")
+
+    except Exception as e: 
+        logger.error(f"Failed to save entry: {e}", exc_info=True)
+        raise
+
+
+def save_failed_entry(raw_text: str, workout_date: str) -> None:
+    """
+    Saves a failed workout entry to the database, by inserting:
+    - A single record into `workout_entries_raw` with `parse_status` set to `"failed"`
+    - It is used when parsing of an entry was unsuccessful, allowing the raw input to be
+    stored for debugging or reprocessing later.
+
+    Args:
+        raw_text (str): Original, unstructured user input that failed to parse
+        workout_date (str): Date of the workout
+
+    Raises:
+        Exception: If the database insert fails
+    """
+    logger.info("Saving failed entry")
+
+    # Get variables defined in dataclass
+    raw_vars = [i.name for i in fields(WorkoutEntryRaw)]
+    raw_vars_for_sql = ", ".join(["entry_id"] + raw_vars)
+    raw_sql_placeholders = ", ".join(["?"] * (len(raw_vars) + 1))
+
+    try:
+        with get_conn() as conn:
+            cur = conn.execute(
+                f"INSERT INTO workout_entries_raw ({raw_vars_for_sql}) VALUES ({raw_sql_placeholders})",
+                (raw_text, workout_date, "failed")
+            )
+        logger.debug(f"Successfully saved failed entry (id: {cur.lastrowid})")
+
+    except Exception:
+        logger.error("Failed to save failed entry", exc_info=True)
+        raise
 
 
 def get_exercises(

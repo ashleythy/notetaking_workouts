@@ -13,9 +13,9 @@ from backend import database, groq_client
 from backend.models import WorkoutEntryParsed
 
 
-# Page introductions
+# Page intro
 st.title("Log Workout")
-st.write("Type your workout in any format — e.g. *'3x10 pushups, 20 squats, felt tired'*")
+st.write("Type your workout in any format")
 
 # Form for submission
 with st.form("workout_form"):
@@ -39,11 +39,11 @@ if submitted and raw_text.strip():
         except ValueError as e:
             logger.error(f"Error parsing entry: {e}")
             st.error(f"Could not parse response. Raw note saved.\n\n{e}")
-            # database.save_failed_entry(raw_text.strip(), today_str)
+            database.save_failed_entry(raw_text.strip(), today_str)
             st.stop()
 
     # Parse entry into variables as expected in workout.workout_entries_parsed db table
-    logger.info("Assessing parsed results")
+    logger.info("Checking parsed results")
     confidence = parsed.get("parse_confidence", "n/a")
     exercises = parsed.get("exercises", [])
     workout_date = parsed.get("workout_date", today_str)
@@ -109,7 +109,6 @@ if "exercise_df" in st.session_state:
             st.session_state["exercise_df"] = remaining.reset_index(drop=True)
             st.session_state["editor_version"] = st.session_state.get("editor_version", 0) + 1
             st.rerun()
-            logger.debug("Successful deletion of selected row(s)")
 
     with col2:
         if st.button("Confirm & Save", type="primary"):
@@ -117,20 +116,18 @@ if "exercise_df" in st.session_state:
             # Remove rows with no exercise name
             exercises_to_save = [e for e in exercises_to_save if e.get("exercise_name")]
             if not exercises_to_save:
-                logger.warning("Save button clicked but no exercises to save")
-                st.error("No exercises to save. Make sure at least one row has an exercise entry.")
+                logger.warning("No exercises to save")
+                st.error("No exercises to save. Make sure at least one row has an extracted exercise")
             else:
                 database.save_entry(st.session_state["raw_text"], st.session_state["workout_date"], exercises_to_save)
                 st.success(f"Saved {len(exercises_to_save)} exercise(s) for {st.session_state['workout_date']}!")
                 st.balloons()
                 del st.session_state["exercise_df"]
-                logger.debug("Successful saving of exercises to db")
 
     with col3:
         if st.button("Delete table (restart)"):
             del st.session_state["exercise_df"]
             st.rerun()
-            logger.debug("Successful deletion of entire table")
 
 elif submitted and not raw_text.strip():
     st.warning("Please enter something before parsing.")

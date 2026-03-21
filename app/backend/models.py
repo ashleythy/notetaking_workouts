@@ -18,5 +18,4 @@ class WorkoutEntryParsed:
 class WorkoutEntryRaw:
     raw_text: str
     workout_date: str
-    exercises: list[WorkoutEntryParsed] = field(default_factory=list)
     parse_status: str = "ok"
