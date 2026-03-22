@@ -1,3 +1,9 @@
+"""
+Streamlit first page for logging workout entries.
+Users submit free-text notes which are parsed by Groq into structured workout data.
+Parsed results are shown in an editable table for review before saving it to the database.
+"""
+
 import sys
 import os
 import pandas as pd
@@ -11,7 +17,6 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from backend import database, groq_client
 from backend.models import WorkoutEntryParsed
-
 
 # Page intro
 st.title("Log Workout")

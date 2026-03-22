@@ -1,3 +1,9 @@
+"""
+Streamlit second page for viewing logged workout entries.
+Displays a filterable table of past exercises by date range, exercise name, and feeling.
+Results can be downloaded as a CSV.
+"""
+
 import sys
 import os
 from datetime import date, timedelta
@@ -8,7 +14,6 @@ import streamlit as st
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from backend import database
-
 
 # Page intro
 st.title("View Logs")
