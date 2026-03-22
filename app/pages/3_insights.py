@@ -76,10 +76,10 @@ st.divider()
 st.subheader("Workout Frequency")
 st.plotly_chart(chart_helpers.frequency_chart(df), use_container_width=True)
 
-st.subheader("Total Reps by Exercise")
+st.subheader("Total Reps By Exercise")
 st.plotly_chart(chart_helpers.volume_chart(df), use_container_width=True)
 
-st.subheader("Progression")
+st.subheader("Progression Over Time")
 exercise_names = sorted(df["exercise_name"].unique().tolist())
 selected = st.selectbox("Select exercise", options=exercise_names)
 metric = st.selectbox("Metric", options=["weight_kg", "reps", "sets", "duration_min"],
