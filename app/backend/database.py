@@ -147,8 +147,8 @@ def save_failed_entry(raw_text: str, workout_date: str) -> None:
 def get_exercises(
     start_date: Optional[str],
     end_date: Optional[str],
-    exercise_names: Optional[list[str]],
-    feelings: Optional[list[str]]
+    exercise_names: Optional[list[str]]=None,
+    feelings: Optional[list[str]]=None
 ) -> list[dict]:
     """
     Retrieves parsed entries from the database with optional filters. 
