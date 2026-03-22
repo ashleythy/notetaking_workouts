@@ -13,9 +13,9 @@ def frequency_chart(df: pd.DataFrame) -> go.Figure:
         counts,
         x="Date",
         y="Sessions",
-        title="Workout Frequency",
         labels={"Sessions": "Sessions logged"},
     )
+    fig.update_xaxes(tickformat="%Y-%m-%d")
     fig.update_layout(xaxis_tickangle=-45)
     return fig
 
@@ -38,8 +38,7 @@ def volume_chart(df: pd.DataFrame) -> go.Figure:
         vol,
         x="Total Reps",
         y="Exercise",
-        orientation="h",
-        title="Total Reps by Exercise",
+        orientation="h"
     )
     return fig
 
@@ -56,9 +55,11 @@ def progression_chart(df: pd.DataFrame, exercise: str, metric: str = "weight_kg"
         x="workout_date",
         y=metric,
         markers=True,
-        title=f"{exercise} — {label} over time",
-        labels={"workout_date": "Date", metric: label},
+        title=f"{(exercise).capitalize()} ({label})",
+        labels={"workout_date": "Date", metric: f"# {label}"},
     )
+    fig.update_xaxes(tickformat="%Y-%m-%d")
+    fig.update_layout(xaxis_tickangle=-45)
     return fig
 
 
