@@ -1,2 +1,3 @@
 .env
 data/workouts.db
+.streamlit/secrets.toml

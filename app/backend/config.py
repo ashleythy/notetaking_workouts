@@ -3,11 +3,6 @@ Centralised place to define and configure variables used for modules in app/back
 
 """
 
-from pathlib import Path
-
-# Paths 
-DB_PATH = Path(__file__).parent.parent.parent / "data" / "workouts.db"
-
 # Model - Single model for Parser and Summariser
 PARSE_MODEL = "openai/gpt-oss-20b" # Cheapest one of the lot
 
