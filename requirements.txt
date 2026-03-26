@@ -1,14 +1,7 @@
-ipykernel
 pandas
-matplotlib
-kagglehub
-# gliner==0.1.12
-numpy==2.2.6
-# scipy==1.15.3
-# scipy<=1.12
-humanize
 streamlit>=1.36.0
 groq>=0.9.0
 plotly>=5.22.0
 python-dotenv>=1.0.0
 loguru
+psycopg2-binary>=2.9.0
