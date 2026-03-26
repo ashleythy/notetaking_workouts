@@ -1,8 +1,8 @@
 # Workout Tracker
 
-A Streamlit app for logging, reviewing, and generating insights on workouts using natural language. 
+A Streamlit app for logging, reviewing, and generating insights on workouts using natural language.
 
-This is done by having the user input a free-text workout note. The app then uses the Groq API to parse it into structured data, which is stored in a local SQLite database, and later used for insights generation.
+This is done by having the user input a free-text workout note. The app then uses the Groq API to parse it into structured data, which is stored in a Supabase (PostgreSQL) database, and later used for insights generation.
 
 ## Features
 
@@ -17,12 +17,18 @@ This is done by having the user input a free-text workout note. The app then use
    pip install -r requirements.txt
    ```
 
-2. Create a `.env` file in the project root with your Groq API key:
+2. Set up a [Supabase](https://supabase.com) project and get the **Transaction pooler** connection string:
+   - Go to **Project Settings → Database → Connection Pooling**
+   - Copy the **Transaction mode** URL (port `6543`)
+
+3. Create a `.env` file in the project root with your credentials:
    ```
    GROQ_API_KEY=your_key_here
+   DATABASE_URL=postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres
    ```
+   > Use the **Transaction pooler URL** (not the direct connection URL) to ensure IPv4 compatibility.
 
-3. Run the app:
+4. Run the app:
    ```bash
    streamlit run app/app.py
    ```
@@ -39,7 +45,7 @@ app/
 ├── backend/
 │   ├── config.py           # Paths, model name, and system prompts
 │   ├── models.py           # Dataclasses for workout entries
-│   ├── database.py         # SQLite read/write functions
+│   ├── database.py         # Supabase (PostgreSQL) read/write functions
 │   └── groq_client.py      # Groq API calls for parsing and summarisation
 └── utils/
     └── chart_helpers.py    # Plotly chart builders
@@ -49,3 +55,16 @@ app/
 
 - Python 3.10+
 - [Groq API key](https://console.groq.com)
+- [Supabase](https://supabase.com) project (free tier works; to upgrade as needed)
+
+## Streamlit Cloud Deployment
+
+Add secrets via **App Settings → Secrets**:
+
+```toml
+[database]
+url = "postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres"
+
+[groq]
+api_key = "your_key_here"
+```
