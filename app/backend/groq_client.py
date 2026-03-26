@@ -5,6 +5,7 @@ from loguru import logger
 
 from dotenv import load_dotenv
 from groq import Groq, RateLimitError
+import streamlit as st
 
 from .config import PARSE_MODEL, PARSE_SYSTEM_PROMPT, SUMMARIZE_SYSTEM_PROMPT
 
@@ -13,13 +14,21 @@ load_dotenv()
 
 _client: Groq | None = None
 
+
+def _get_api_key() -> str:
+    try:
+        return st.secrets["groq"]["api_key"]
+    except Exception:
+        api_key = os.environ.get("GROQ_API_KEY")
+        if not api_key:
+            raise EnvironmentError("GROQ_API_KEY not set. Add it to .env (local) or Streamlit secrets (cloud).")
+        return api_key
+
+
 def _get_client() -> Groq:
     global _client
     if _client is None:
-        api_key = os.environ.get("GROQ_API_KEY")
-        if not api_key:
-            raise EnvironmentError("GROQ_API_KEY not set. Add it to a .env file.")
-        _client = Groq(api_key=api_key)
+        _client = Groq(api_key=_get_api_key())
     return _client
 
 
