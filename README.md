@@ -1,4 +1,4 @@
-# Workout Tracker
+# Notetaking - Workouts
 
 A Streamlit app for logging, reviewing, and generating insights on workouts using natural language.
 
@@ -22,13 +22,38 @@ This is done by having the user input a free-text workout note. The app then use
    - Copy the **Transaction mode** URL (port `6543`)
 
 3. Create a `.env` file in the project root with your credentials:
-   ```
+   ```bash
    GROQ_API_KEY=your_key_here
    DATABASE_URL=postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres
    ```
    > Use the **Transaction pooler URL** (not the direct connection URL) to ensure IPv4 compatibility.
 
-4. Run the app:
+4. Set up user authentication. Generate a bcrypt-hashed password:
+   ```python
+   import bcrypt
+   bcrypt.hashpw("your_password".encode(), bcrypt.gensalt(12)).decode()
+   ```
+   Then create `.streamlit/secrets.toml` (gitignored) with the following structure:
+   ```toml
+   [database]
+   url = "your_transaction_pooler_url"
+
+   [groq]
+   api_key = "your_groq_api_key"
+
+   # One block per user. The key (e.g. "ashley") is used as the login username and stored as user_id in the DB.
+   [auth.credentials.usernames.ashley]
+   name = "Ashley"
+   password = "your_bcrypt_hash"
+
+   # Auth cookie settings — used to persist login across browser sessions
+   [auth.cookie]
+   name = "notetaking_workouts"        # Cookie name stored in the browser
+   key = "a_random_secret_string"     # Secret used to sign the cookie — keep this private
+   expiry_days = 30                   # How long the login session lasts
+   ```
+
+5. Run the app:
    ```bash
    streamlit run app/app.py
    ```
@@ -56,15 +81,8 @@ app/
 - Python 3.10+
 - [Groq API key](https://console.groq.com)
 - [Supabase](https://supabase.com) project (free tier works; to upgrade as needed)
+- `bcrypt` (included via `streamlit-authenticator`) for password hashing
 
 ## Streamlit Cloud Deployment
 
-Add secrets via **App Settings → Secrets**:
-
-```toml
-[database]
-url = "postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres"
-
-[groq]
-api_key = "your_key_here"
-```
+Add the full contents of `.streamlit/secrets.toml` via **App Settings → Secrets** in the Streamlit Cloud dashboard — same format as the local file.
