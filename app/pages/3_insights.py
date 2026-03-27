@@ -50,7 +50,7 @@ if period == "Customise":
 start_str = start_date.strftime("%Y-%m-%d")
 end_str = end_date.strftime("%Y-%m-%d")
 
-rows = database.get_exercises(start_date=start_str, end_date=end_str)
+rows = database.get_exercises(start_date=start_str, end_date=end_str, user_id=st.session_state["user_id"])
 
 if not rows:
     st.info("No workouts logged yet for the selected period.")

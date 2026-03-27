@@ -25,8 +25,9 @@ with col1:
 with col2:
     end_date = st.date_input("To", value=date.today())
 
-all_exercises = database.get_all_exercise_names()
-all_feelings = database.get_all_feelings()
+user_id = st.session_state["user_id"]
+all_exercises = database.get_all_exercise_names(user_id)
+all_feelings = database.get_all_feelings(user_id)
 
 col3, col4 = st.columns(2)
 with col3:
@@ -37,6 +38,7 @@ with col4:
 rows = database.get_exercises(
     start_date=start_date.strftime("%Y-%m-%d"),
     end_date=end_date.strftime("%Y-%m-%d"),
+    user_id=user_id,
     exercise_names=selected_exercises or None,
     feelings=selected_feelings or None,
 )

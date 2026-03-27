@@ -5,3 +5,5 @@ plotly>=5.22.0
 python-dotenv>=1.0.0
 loguru
 psycopg2-binary>=2.9.0
+streamlit-authenticator>=0.3.0
+bcrypt==5.0.0

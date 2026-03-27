@@ -52,7 +52,8 @@ def init_db():
                     raw_text      TEXT NOT NULL,
                     workout_date  DATE NOT NULL,
                     created_at    TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-                    parse_status  TEXT DEFAULT 'ok'
+                    parse_status  TEXT DEFAULT 'ok',
+                    user_id       VARCHAR
                 )
             """)
             cur.execute("""
@@ -68,6 +69,8 @@ def init_db():
                     others        TEXT
                 )
             """)
+            # Add user_id to existing tables if not present
+            cur.execute("ALTER TABLE workout_entries_raw ADD COLUMN IF NOT EXISTS user_id VARCHAR")
         conn.commit()
     except Exception as e:
         conn.rollback()
@@ -77,7 +80,7 @@ def init_db():
         conn.close()
 
 
-def save_entry(raw_text: str, workout_date: str, exercises: list[dict], parse_status: str = "ok") -> None:
+def save_entry(raw_text: str, workout_date: str, exercises: list[dict], user_id: str, parse_status: str = "ok") -> None:
     """
     Saves a workout entry to the database, by inserting:
     - A single raw entry into `workout_entries_raw`
@@ -105,8 +108,8 @@ def save_entry(raw_text: str, workout_date: str, exercises: list[dict], parse_st
     try:
         with conn.cursor() as cur:
             cur.execute(
-                "INSERT INTO workout_entries_raw (raw_text, workout_date, parse_status) VALUES (%s, %s, %s) RETURNING entry_id",
-                (raw_text, workout_date, parse_status),
+                "INSERT INTO workout_entries_raw (raw_text, workout_date, parse_status, user_id) VALUES (%s, %s, %s, %s) RETURNING entry_id",
+                (raw_text, workout_date, parse_status, user_id),
             )
             entry_id = cur.fetchone()["entry_id"]
 
@@ -124,7 +127,7 @@ def save_entry(raw_text: str, workout_date: str, exercises: list[dict], parse_st
         conn.close()
 
 
-def save_failed_entry(raw_text: str, workout_date: str) -> None:
+def save_failed_entry(raw_text: str, workout_date: str, user_id: str) -> None:
     """
     Saves a failed workout entry to `workout_entries_raw` with parse_status='failed'.
 
@@ -141,8 +144,8 @@ def save_failed_entry(raw_text: str, workout_date: str) -> None:
     try:
         with conn.cursor() as cur:
             cur.execute(
-                "INSERT INTO workout_entries_raw (raw_text, workout_date, parse_status) VALUES (%s, %s, %s)",
-                (entry.raw_text, entry.workout_date, entry.parse_status),
+                "INSERT INTO workout_entries_raw (raw_text, workout_date, parse_status, user_id) VALUES (%s, %s, %s, %s)",
+                (entry.raw_text, entry.workout_date, entry.parse_status, user_id),
             )
         conn.commit()
         logger.debug("Successfully saved failed entry")
@@ -157,6 +160,7 @@ def save_failed_entry(raw_text: str, workout_date: str) -> None:
 def get_exercises(
     start_date: Optional[str],
     end_date: Optional[str],
+    user_id: str = None,
     exercise_names: Optional[list[str]] = None,
     feelings: Optional[list[str]] = None,
 ) -> list[dict]:
@@ -169,6 +173,9 @@ def get_exercises(
     conditions = []
     params = []
 
+    if user_id:
+        conditions.append("e.user_id = %s")
+        params.append(user_id)
     if start_date:
         conditions.append("e.workout_date >= %s")
         params.append(start_date)
@@ -210,21 +217,33 @@ def get_exercises(
         conn.close()
 
 
-def get_all_exercise_names() -> list[str]:
+def get_all_exercise_names(user_id: str = None) -> list[str]:
     conn = get_conn()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT DISTINCT exercise_name FROM workout_entries_parsed ORDER BY exercise_name")
+            if user_id:
+                cur.execute(
+                    "SELECT DISTINCT x.exercise_name FROM workout_entries_parsed x JOIN workout_entries_raw e ON e.entry_id = x.entry_id WHERE e.user_id = %s ORDER BY x.exercise_name",
+                    (user_id,),
+                )
+            else:
+                cur.execute("SELECT DISTINCT exercise_name FROM workout_entries_parsed ORDER BY exercise_name")
             return [r["exercise_name"] for r in cur.fetchall()]
     finally:
         conn.close()
 
 
-def get_all_feelings() -> list[str]:
+def get_all_feelings(user_id: str = None) -> list[str]:
     conn = get_conn()
     try:
         with conn.cursor() as cur:
-            cur.execute("SELECT DISTINCT feelings FROM workout_entries_parsed WHERE feelings IS NOT NULL ORDER BY feelings")
+            if user_id:
+                cur.execute(
+                    "SELECT DISTINCT x.feelings FROM workout_entries_parsed x JOIN workout_entries_raw e ON e.entry_id = x.entry_id WHERE x.feelings IS NOT NULL AND e.user_id = %s ORDER BY x.feelings",
+                    (user_id,),
+                )
+            else:
+                cur.execute("SELECT DISTINCT feelings FROM workout_entries_parsed WHERE feelings IS NOT NULL ORDER BY feelings")
             return [r["feelings"] for r in cur.fetchall()]
     finally:
         conn.close()

@@ -44,7 +44,7 @@ if submitted and raw_text.strip():
         except ValueError as e:
             logger.error(f"Error parsing entry: {e}")
             st.error(f"Could not parse response. Raw note saved.\n\n{e}")
-            database.save_failed_entry(raw_text.strip(), today_str)
+            database.save_failed_entry(raw_text.strip(), today_str, st.session_state["user_id"])
             st.stop()
 
     # Parse entry into variables as expected in workout.workout_entries_parsed db table
@@ -124,7 +124,7 @@ if "exercise_df" in st.session_state:
                 logger.warning("No exercises to save")
                 st.error("No exercises to save. Make sure at least one row has an extracted exercise")
             else:
-                database.save_entry(st.session_state["raw_text"], st.session_state["workout_date"], exercises_to_save)
+                database.save_entry(st.session_state["raw_text"], st.session_state["workout_date"], exercises_to_save, st.session_state["user_id"])
                 workout_date_saved = st.session_state["workout_date"]
                 del st.session_state["exercise_df"]
                 st.success("Exercises saved!")
