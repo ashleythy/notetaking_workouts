@@ -92,7 +92,7 @@ if "exercise_df" in st.session_state:
     edited_df = st.data_editor(
         display_df,
         key=f"exercise_editor_{st.session_state.get('editor_version', 0)}",
-        use_container_width=True,
+        width="stretch",
         num_rows="dynamic",
         column_config={
             "select": st.column_config.CheckboxColumn("Select"),

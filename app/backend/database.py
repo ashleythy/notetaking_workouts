@@ -9,6 +9,7 @@ Connection URL is read from:
 from typing import Optional
 from dataclasses import fields
 from loguru import logger
+import math
 import os
 
 import psycopg2
@@ -100,6 +101,12 @@ def save_entry(raw_text: str, workout_date: str, exercises: list[dict], user_id:
     """
     logger.info("Saving entry")
 
+    def _clean(val):
+        """Convert NaN/inf floats (from pandas empty cells) to None for PostgreSQL."""
+        if isinstance(val, float) and (math.isnan(val) or math.isinf(val)):
+            return None
+        return val
+
     parsed_vars = [f.name for f in fields(WorkoutEntryParsed)]
     parsed_cols = ", ".join(["entry_id"] + parsed_vars)
     parsed_placeholders = ", ".join(["%s"] * (len(parsed_vars) + 1))
@@ -115,7 +122,7 @@ def save_entry(raw_text: str, workout_date: str, exercises: list[dict], user_id:
 
             cur.executemany(
                 f"INSERT INTO workout_entries_parsed ({parsed_cols}) VALUES ({parsed_placeholders})",
-                [(entry_id, *[e.get(var) for var in parsed_vars]) for e in exercises],
+                [(entry_id, *[_clean(e.get(var)) for var in parsed_vars]) for e in exercises],
             )
         conn.commit()
         logger.debug(f"Successfully saved entry (id: {entry_id})")
