@@ -74,10 +74,10 @@ st.divider()
 
 # Charts
 st.subheader("Workout Frequency")
-st.plotly_chart(chart_helpers.frequency_chart(df), use_container_width=True)
+st.plotly_chart(chart_helpers.frequency_chart(df), width="stretch")
 
 st.subheader("Total Reps By Exercise")
-st.plotly_chart(chart_helpers.volume_chart(df), use_container_width=True)
+st.plotly_chart(chart_helpers.volume_chart(df), width="stretch")
 
 st.subheader("Progression Over Time")
 exercise_names = sorted(df["exercise_name"].unique().tolist())
@@ -85,4 +85,4 @@ selected = st.selectbox("Select exercise", options=exercise_names)
 metric = st.selectbox("Metric", options=["weight_kg", "reps", "sets", "duration_min"],
                       format_func=lambda x: x.replace("_", " ").title())
 if selected:
-    st.plotly_chart(chart_helpers.progression_chart(df, selected, metric), use_container_width=True)
+    st.plotly_chart(chart_helpers.progression_chart(df, selected, metric), width="stretch")

@@ -60,7 +60,7 @@ df = df.rename(columns={
     "others": "Notes",
 })
 
-st.dataframe(df, use_container_width=True, hide_index=True)
+st.dataframe(df, width="stretch", hide_index=True)
 st.caption(f"{len(df)} row(s) shown")
 
 # Download df as csv
